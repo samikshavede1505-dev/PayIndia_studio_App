@@ -28,8 +28,7 @@ export default function PersonalDetailsScreen() {
   const [fullName, setFullName] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
   const [gender, setGender] = useState("");
-  const [aadhaarNumber, setAadhaarNumber] = useState("");
-  const [isAadhaarVerified, setIsAadhaarVerified] = useState(false);
+  const [email, setEmail] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
 
   // Profile completion status
@@ -56,6 +55,7 @@ export default function PersonalDetailsScreen() {
       if (response.ok) {
         setFullName(data.name || "");
         setMobileNumber(data.mobile_number || "");
+        setEmail(data.email || "");
         setGender(data.gender || "");
         setDateOfBirth(data.date_of_birth || "");
         setProfileImage(data.profile_image || null);
@@ -154,23 +154,9 @@ export default function PersonalDetailsScreen() {
     ]);
   };
 
-  // Format Aadhaar number with spaces (XXXX XXXX XXXX)
-  const formatAadhaar = (text: string) => {
-    // Remove all non-digits
-    const cleaned = text.replace(/\D/g, "");
-
-    // Limit to 12 digits
-    const limited = cleaned.substring(0, 12);
-
-    // Add spaces after every 4 digits
-    const formatted = limited.replace(/(\d{4})(?=\d)/g, "$1 ");
-
-    return formatted;
-  };
-
-  const handleAadhaarChange = (text: string) => {
-    const formatted = formatAadhaar(text);
-    setAadhaarNumber(formatted);
+  // Email change handler
+  const handleEmailChange = (text: string) => {
+    setEmail(text.trim());
   };
 
   // Format DOB with auto slashes (DD/MM/YYYY)
@@ -181,18 +167,18 @@ export default function PersonalDetailsScreen() {
     // Limit to 8 digits
     const limited = cleaned.substring(0, 8);
 
-    // Add slashes after DD and MM
+    // Add hyphens after YYYY and MM
     let formatted = limited;
-    if (limited.length >= 2) {
-      formatted = limited.substring(0, 2) + "/" + limited.substring(2);
-    }
     if (limited.length >= 4) {
+      formatted = limited.substring(0, 4) + "-" + limited.substring(4);
+    }
+    if (limited.length >= 6) {
       formatted =
-        limited.substring(0, 2) +
-        "/" +
-        limited.substring(2, 4) +
-        "/" +
-        limited.substring(4);
+        limited.substring(0, 4) +
+        "-" +
+        limited.substring(4, 6) +
+        "-" +
+        limited.substring(6);
     }
 
     return formatted;
@@ -212,52 +198,28 @@ export default function PersonalDetailsScreen() {
     setMobileNumber(limited);
   };
 
-  // Verify Aadhaar (placeholder - will connect to API later)
-  const verifyAadhaar = () => {
-    const cleaned = aadhaarNumber.replace(/\s/g, "");
-
-    if (cleaned.length !== 12) {
-      Alert.alert("Invalid Aadhaar", "Aadhaar number must be 12 digits");
-      return;
-    }
-
-    // Placeholder verification - will be replaced with actual API call
-    Alert.alert(
-      "Verify Aadhaar",
-      "Do you want to verify this Aadhaar number?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Verify",
-          onPress: () => {
-            // Simulated verification - replace with actual API call
-            setTimeout(() => {
-              setIsAadhaarVerified(true);
-              Alert.alert("Success", "Aadhaar verified successfully");
-            }, 1500);
-          },
-        },
-      ],
-    );
+  // Email validation helper
+  const validateEmail = (email: string) => {
+    return /\S+@\S+\.\S+/.test(email);
   };
 
   // Validate DOB
   const validateDOB = (dob: string) => {
     if (dob.length !== 10) return false;
 
-    const parts = dob.split("/");
-    const day = parseInt(parts[0]);
+    const parts = dob.split("-");
+    const year = parseInt(parts[0]);
     const month = parseInt(parts[1]);
-    const year = parseInt(parts[2]);
+    const day = parseInt(parts[2]);
 
     // Check valid ranges
     if (
-      day < 1 ||
-      day > 31 ||
+      year < 1900 ||
+      year > new Date().getFullYear() ||
       month < 1 ||
       month > 12 ||
-      year < 1900 ||
-      year > new Date().getFullYear()
+      day < 1 ||
+      day > 31
     ) {
       return false;
     }
@@ -289,21 +251,15 @@ export default function PersonalDetailsScreen() {
       return false;
     }
 
-    const cleanedAadhaar = aadhaarNumber.replace(/\s/g, "");
-    if (cleanedAadhaar.length !== 12) {
-      Alert.alert("Validation Error", "Aadhaar number must be 12 digits");
-      return false;
-    }
-
-    if (!isAadhaarVerified) {
-      Alert.alert("Verification Required", "Please verify your Aadhaar number");
+    if (!email.trim() || !validateEmail(email)) {
+      Alert.alert("Validation Error", "Please enter a valid email address");
       return false;
     }
 
     if (!validateDOB(dateOfBirth)) {
       Alert.alert(
         "Validation Error",
-        "Please enter a valid date of birth (DD/MM/YYYY)",
+        "Please enter a valid date of birth (YYYY-MM-DD)",
       );
       return false;
     }
@@ -333,6 +289,7 @@ export default function PersonalDetailsScreen() {
               },
               body: JSON.stringify({
                 name: fullName,
+                email: email,
                 gender: gender,
                 date_of_birth: dateOfBirth,
                 profile_image: profileImage,
@@ -543,48 +500,26 @@ export default function PersonalDetailsScreen() {
               </View>
             </View>
 
-            {/* Aadhaar Card */}
+            {/* Email Section */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>
-                Aadhaar Number <Text style={styles.required}>*</Text>
+                Email Address <Text style={styles.required}>*</Text>
               </Text>
               <View style={styles.inputContainer}>
-                <MaterialCommunityIcons
-                  name="card-account-details"
-                  size={20}
-                  color="#999"
-                />
+                <Ionicons name="mail-outline" size={20} color="#999" />
                 <TextInput
                   style={styles.input}
-                  placeholder="XXXX XXXX XXXX"
+                  placeholder="Enter your email address"
                   placeholderTextColor="#999"
-                  keyboardType="number-pad"
-                  maxLength={14} // 12 digits + 2 spaces
-                  value={aadhaarNumber}
-                  onChangeText={handleAadhaarChange}
-                  editable={!isAadhaarVerified}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={email}
+                  onChangeText={handleEmailChange}
                 />
-                {isAadhaarVerified && (
-                  <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
-                )}
               </View>
-
-              {aadhaarNumber.replace(/\s/g, "").length === 12 &&
-                !isAadhaarVerified && (
-                  <TouchableOpacity
-                    style={styles.verifyButton}
-                    onPress={verifyAadhaar}
-                  >
-                    <Text style={styles.verifyButtonText}>Verify Aadhaar</Text>
-                  </TouchableOpacity>
-                )}
-
-              {isAadhaarVerified && (
-                <View style={styles.verifiedBadge}>
-                  <Ionicons name="shield-checkmark" size={16} color="#4CAF50" />
-                  <Text style={styles.verifiedText}>Verified</Text>
-                </View>
-              )}
+              <Text style={styles.hintText}>
+                Used for sending important notifications
+              </Text>
             </View>
 
             {/* Date of Birth */}
@@ -596,7 +531,7 @@ export default function PersonalDetailsScreen() {
                 <Ionicons name="calendar-outline" size={20} color="#999" />
                 <TextInput
                   style={styles.input}
-                  placeholder="DD/MM/YYYY"
+                  placeholder="YYYY-MM-DD"
                   placeholderTextColor="#999"
                   keyboardType="number-pad"
                   maxLength={10}
@@ -605,7 +540,7 @@ export default function PersonalDetailsScreen() {
                 />
               </View>
               <Text style={styles.hintText}>
-                Enter your date of birth (e.g., 15/08/1995)
+                Enter your date of birth (e.g., 1995-08-15)
               </Text>
             </View>
           </View>
